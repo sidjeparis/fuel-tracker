@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Car</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="My Car">
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --line:#262d38;
+    --ink:#e8edf2; --muted:#8a96a5;
+    --accent:#46d6a0; --warn:#f4a04a; --bad:#ef5a5a;
+    --blue:#5aa0ef; --fuel:#f4c84a; --purple:#a98bf0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  body{padding:14px 13px 70px;max-width:580px;margin:0 auto}
+
+  .head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px}
+  .head h1{font-size:18px;font-weight:700;letter-spacing:-.3px}
+  .head .car{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .modeline{font-size:11px;color:var(--muted);margin-bottom:12px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .modeline select{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:3px 6px;font-size:11px}
+
+  /* tabs */
+  .tabs{display:flex;gap:6px;margin-bottom:14px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:4px}
+  .tabs button{flex:1;background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;padding:9px 4px;border-radius:8px;cursor:pointer}
+  .tabs button.on{background:var(--panel2);color:var(--ink)}
+
+  /* slider */
+  .slider-wrap{overflow:hidden;width:100%;touch-action:pan-y}
+  .slider{display:flex;width:400%;transition:transform .32s cubic-bezier(.25,.8,.35,1)}
+  .slider.dragging{transition:none}
+  .view{width:25%;flex-shrink:0;padding:0 1px}
+
+  /* hero */
+  .hero{background:linear-gradient(160deg,#192029,#12171e);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:12px}
+  .hero .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+  .hero .big{display:flex;align-items:flex-end;gap:8px}
+  .hero .mpg{font-size:48px;font-weight:800;line-height:.9;letter-spacing:-1.5px;font-variant-numeric:tabular-nums}
+  .hero .mpgunit{font-size:14px;color:var(--muted);margin-bottom:7px}
+  .hero .vs{margin-top:10px;font-size:12.5px;color:var(--muted)}
+  .hero .vs b{color:var(--ink)}
+  .delta-pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:700}
+  .bar{margin-top:13px;height:9px;background:#0c1014;border-radius:6px;position:relative}
+  .bar .fill{height:100%;border-radius:6px;transition:width .5s}
+  .bar .epa-mark{position:absolute;top:-4px;width:2px;height:17px;background:var(--blue)}
+  .bar .epa-lab{position:absolute;top:-20px;font-size:9px;color:var(--blue);transform:translateX(-50%)}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:13px 14px}
+  .card .k{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px}
+  .card .v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+  .card .v small{font-size:12px;color:var(--muted);font-weight:500;margin-left:2px}
+  .card .sub{font-size:11px;color:var(--muted);margin-top:3px}
+  .deltaUp{color:var(--bad)} .deltaDown{color:var(--accent)}
+
+  /* graph */
+  .chartcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 14px 8px;margin-bottom:12px}
+  .chartcard h3{font-size:13px;margin-bottom:4px}
+  .chartcard .csub{font-size:11px;color:var(--muted);margin-bottom:8px}
+  .chartwrap{position:relative;width:100%;height:150px}
+  svg{width:100%;height:100%;display:block;overflow:visible}
+  .legend{display:flex;gap:14px;font-size:11px;color:var(--muted);margin-top:6px;flex-wrap:wrap}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:middle}
+
+  .addbtn{width:100%;border:none;border-radius:13px;padding:15px;font-size:15px;font-weight:800;margin-bottom:12px;cursor:pointer;color:#08130d}
+  .addbtn.fuel{background:var(--accent)}
+  .addbtn.svc{background:var(--purple);color:#0d0820}
+  .addbtn:active{transform:scale(.99)}
+
+  .form{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;display:none}
+  .form.open{display:block}
+  .form h3{font-size:14px;margin-bottom:12px}
+  .frow{display:flex;gap:10px;margin-bottom:11px}
+  .field{flex:1;display:flex;flex-direction:column;gap:4px}
+  .field.full{flex-basis:100%}
+  .field label{font-size:11px;color:var(--muted)}
+  .field input,.field select{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:11px 10px;font-size:15px;font-variant-numeric:tabular-nums;width:100%}
+  .field input:focus,.field select:focus{outline:none;border-color:var(--accent)}
+  .calc{font-size:11px;color:var(--muted);min-height:14px;margin:-3px 0 10px}
+  .calc b{color:var(--fuel)}
+  .formbtns{display:flex;gap:10px}
+  .formbtns button{flex:1;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer}
+  .save{background:var(--accent);color:#08130d}
+  .cancel{background:var(--panel2);color:var(--muted)}
+
+  .seclabel{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:10px 2px 9px}
+
+  /* maintenance reminders */
+  .remind{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:6px 14px;margin-bottom:12px}
+  .remind .ritem{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .remind .ritem:last-child{border-bottom:none}
+  .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+  .ritem .rname{flex:1;font-size:13.5px;font-weight:600}
+  .ritem .rstat{font-size:11px;color:var(--muted);margin-top:2px;font-weight:400}
+  .ritem .rright{text-align:right;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .ritem .rbadge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px}
+
+  /* entries */
+  .entry{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:13px 14px;margin-bottom:9px}
+  .entry .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+  .entry .date{font-size:13px;font-weight:600}
+  .entry .odo{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:2px}
+  .entry .cost{text-align:right}
+  .entry .cost .total{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+  .entry .cost .ppg{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .entry .metrics{display:flex;gap:14px;border-top:1px solid var(--line);padding-top:8px}
+  .entry .m{flex:1}
+  .entry .m .ml{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+  .entry .m .mv{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px}
+  .chip{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:6px}
+  .priceΔ{font-size:11px;font-weight:700;margin-left:6px}
+  .entry .del{background:none;border:none;color:#4a5563;font-size:18px;cursor:pointer;padding:0 2px;margin-left:8px}
+  .entry .note{font-size:11.5px;color:var(--muted);margin-top:7px;border-top:1px solid var(--line);padding-top:7px}
+  .entry.svc{border-left:3px solid var(--purple)}
+  .svc-tag{display:inline-block;font-size:10px;font-weight:700;color:var(--purple);background:#a98bf022;padding:2px 8px;border-radius:10px}
+  .first-note{font-size:11px;color:var(--muted);font-style:italic}
+
+  .empty{text-align:center;color:var(--muted);font-size:13px;padding:26px 10px;line-height:1.7}
+
+  /* settings/backup */
+  .backup{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:14px 16px;margin-bottom:12px}
+  .backup p{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:11px}
+  .backup .brow{display:flex;gap:10px}
+  .backup button{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--ink);font-size:13px;font-weight:600;padding:11px;border-radius:9px;cursor:pointer}
+  .reset{display:block;margin:14px auto 0;background:none;border:1px solid var(--line);color:var(--bad);font-size:11px;padding:8px 16px;border-radius:8px;cursor:pointer}
+  .filter{display:flex;gap:6px;margin-bottom:12px}
+  .filter button{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--muted);font-size:12px;padding:8px;border-radius:8px;cursor:pointer}
+  .filter button.on{border-color:var(--accent);color:var(--ink)}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <h1>🚐 My Car</h1>
+  <div class="car">2014 · <span id="odoTop">154,256</span> mi</div>
+</div>
+<div class="modeline">
+  EPA:
+  <select id="trim">
+    <option value="fwd">FWD (Comb 21 · City 18 · Hwy 25)</option>
+    <option value="awd">AWD (Comb 19 · City 16 · Hwy 23)</option>
+  </select>
+</div>
+
+<div class="tabs">
+  <button class="on" data-tab="dash">Dashboard</button>
+  <button data-tab="log">Log</button>
+  <button data-tab="maint">Service</button>
+  <button data-tab="set">Backup</button>
+</div>
+
+<div class="slider-wrap" id="sliderWrap">
+<div class="slider" id="slider">
+
+<!-- ===== DASHBOARD ===== -->
+<div class="view on" id="view-dash">
+  <div class="hero">
+    <div class="label">Recent Real MPG</div>
+    <div class="big"><div class="mpg" id="heroMpg">—</div><div class="mpgunit">MPG</div></div>
+    <div class="vs" id="heroVs">Add a fill-up to compare against EPA.</div>
+    <div class="bar" id="heroBar">
+      <div class="fill" id="heroFill" style="width:0%"></div>
+      <div class="epa-mark" id="epaMark" style="left:0%"></div>
+      <div class="epa-lab" id="epaLab" style="left:0%">EPA</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card"><div class="k">Cost / Mile</div><div class="v" id="costPerMile">—<small>¢/mi</small></div><div class="sub" id="costPerMileSub">Latest fill-up</div></div>
+    <div class="card"><div class="k">Avg MPG</div><div class="v" id="avgMpg">—<small>MPG</small></div><div class="sub" id="avgMpgSub">All-time avg</div></div>
+    <div class="card"><div class="k">Total Fuel</div><div class="v" id="totalSpent">$0</div><div class="sub" id="totalSpentSub">0 fill-ups</div></div>
+    <div class="card"><div class="k">Total Service</div><div class="v" id="totalSvc">$0</div><div class="sub" id="totalSvcSub">0 services</div></div>
+  </div>
+
+  <div class="chartcard">
+    <h3>MPG Trend</h3>
+    <div class="csub">Blue dashed = EPA combined</div>
+    <div class="chartwrap"><svg id="mpgChart" viewBox="0 0 320 150" preserveAspectRatio="none"></svg></div>
+  </div>
+
+  <div class="chartcard">
+    <h3>Price / Gallon Trend</h3>
+    <div class="csub" id="priceSub">Price change per fill-up</div>
+    <div class="chartwrap"><svg id="priceChart" viewBox="0 0 320 150" preserveAspectRatio="none"></svg></div>
+  </div>
+
+  <div class="seclabel">Driving Style</div>
+  <div class="remind" id="diag" style="padding:14px 16px"></div>
+</div>
+
+<!-- ===== LOG ===== -->
+<div class="view" id="view-log">
+  <button class="addbtn fuel" id="openFuel">＋ Add Fill-up</button>
+  <button class="addbtn svc" id="openSvc">＋ Add Service / Wash</button>
+
+  <!-- fuel form -->
+  <div class="form" id="fuelForm">
+    <h3>⛽ New Fill-up</h3>
+    <div class="frow">
+      <div class="field"><label>Date</label><input type="date" id="fDate"></div>
+      <div class="field"><label>Odometer (mi)</label><input type="number" id="fOdo" inputmode="numeric" placeholder="154256"></div>
+    </div>
+    <div class="frow">
+      <div class="field"><label>Gallons (gal)</label><input type="number" step="0.001" id="fGal" inputmode="decimal" placeholder="14.2"></div>
+      <div class="field"><label>Price/gal ($)</label><input type="number" step="0.001" id="fPpg" inputmode="decimal" placeholder="3.29"></div>
+      <div class="field"><label>Total ($)</label><input type="number" step="0.01" id="fTotal" inputmode="decimal" placeholder="46.72"></div>
+    </div>
+    <div class="frow">
+      <div class="field"><label>Drive Type</label><select id="fType"><option value="mixed">Mixed</option><option value="city">Mostly City</option><option value="hwy">Mostly Hwy</option></select></div>
+      <div class="field"><label>Note (optional)</label><input type="text" id="fNote" placeholder="e.g. Costco station"></div>
+    </div>
+    <div class="calc" id="calcHint">Enter any <b>two</b> of the three and the rest auto-calculates.</div>
+    <div class="formbtns"><button class="cancel" data-close="fuelForm">Cancel</button><button class="save" id="saveFuel">Save</button></div>
+  </div>
+
+  <!-- service form -->
+  <div class="form" id="svcForm">
+    <h3>🔧 New Service / Wash</h3>
+    <div class="frow">
+      <div class="field"><label>Date</label><input type="date" id="sDate"></div>
+      <div class="field"><label>Odometer (mi)</label><input type="number" id="sOdo" inputmode="numeric" placeholder="154256"></div>
+    </div>
+    <div class="frow">
+      <div class="field"><label>Item</label>
+        <select id="sType">
+          <option value="oil">Oil Change</option>
+          <option value="tire_rotate">Tire Rotation</option>
+          <option value="tire_replace">Tire Replacement</option>
+          <option value="wash">Car Wash</option>
+          <option value="air_filter">Engine Air Filter</option>
+          <option value="cabin_filter">Cabin Air Filter</option>
+          <option value="brake">Brake Pads</option>
+          <option value="battery">Battery</option>
+          <option value="spark_plug">Spark Plugs</option>
+          <option value="trans_fluid">Transmission Fluid</option>
+          <option value="coolant">Coolant</option>
+          <option value="brake_fluid">Brake Fluid</option>
+          <option value="wiper">Wipers</option>
+          <option value="inspection">Inspection / Reg.</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="field"><label>Cost ($)</label><input type="number" step="0.01" id="sCost" inputmode="decimal" placeholder="65.00"></div>
+    </div>
+    <div class="frow">
+      <div class="field full"><label>Note (optional)</label><input type="text" id="sNote" placeholder="e.g. Synthetic 5W-30, next 5000mi"></div>
+    </div>
+    <div class="formbtns"><button class="cancel" data-close="svcForm">Cancel</button><button class="save" id="saveSvc">Save</button></div>
+  </div>
+
+  <div class="filter">
+    <button class="on" data-filter="all">All</button>
+    <button data-filter="fuel">Fuel</button>
+    <button data-filter="svc">Service</button>
+  </div>
+  <div id="logList"></div>
+</div>
+
+<!-- ===== MAINTENANCE ===== -->
+<div class="view" id="view-maint">
+  <div class="seclabel">Parts Check (Current Mileage)</div>
+  <div class="remind" id="parts"></div>
+  <p style="font-size:11px;color:var(--muted);line-height:1.6;padding:0 4px 4px">
+    Based on Toyota service schedule. Uses your last service if logged, otherwise current odometer.
+    Log the item after replacing it and the next interval updates automatically.
+  </p>
+  <div class="seclabel">Service Reminders (mileage & days)</div>
+  <div class="remind" id="reminders"></div>
+  <p style="font-size:11px;color:var(--muted);line-height:1.6;padding:0 4px">
+    Red = overdue, Orange = soon, Green = OK.
+  </p>
+  <div class="seclabel">Recent Service History</div>
+  <div id="svcHistory"></div>
+</div>
+
+<!-- ===== SETTINGS / BACKUP ===== -->
+<div class="view" id="view-set">
+  <div class="seclabel">Where Records Are Stored</div>
+  <div class="backup">
+    <p>All records are saved automatically <b>in this device's browser</b>. They persist after closing the app, but do not auto-sync across devices.
+    Export a backup file (e.g. keep it in Google Drive) or import it on another device.</p>
+    <div class="brow">
+      <button id="exportBtn">📤 Export Backup</button>
+      <button id="importBtn">📥 Import</button>
+    </div>
+    <input type="file" id="importFile" accept="application/json" style="display:none">
+  </div>
+  <div class="seclabel">Data</div>
+  <div class="backup">
+    <p id="dataCount">0 records</p>
+    <button class="reset" id="resetBtn">Delete All Records</button>
+  </div>
+</div>
+
+</div><!-- /slider -->
+</div><!-- /slider-wrap -->
+
+<script>
+const EPA = { fwd:{comb:21,city:18,hwy:25}, awd:{comb:19,city:16,hwy:23} };
+// Service intervals: miles / days
+const SVC_RULES = {
+  oil:          {name:'Oil Change',       mi:5000,  days:180, color:'#46d6a0'},
+  tire_rotate:  {name:'Tire Rotation',  mi:6000,  days:180, color:'#5aa0ef'},
+  tire_replace: {name:'Tire Replacement',      mi:45000, days:1825,color:'#f4a04a'},
+  air_filter:   {name:'Engine Air Filter',    mi:20000, days:730, color:'#a98bf0'},
+  cabin_filter: {name:'Cabin Air Filter',    mi:20000, days:730, color:'#a98bf0'},
+  brake:        {name:'Brake Pads',    mi:35000, days:1095,color:'#ef5a5a'},
+  battery:      {name:'Battery',           mi:0,     days:1460,color:'#f4c84a'},
+  spark_plug:   {name:'Spark Plugs',    mi:120000,days:0,   color:'#5ad0d6'},
+  trans_fluid:  {name:'Transmission Fluid',      mi:40000, days:0,   color:'#f0a0d0'},
+  coolant:      {name:'Coolant',           mi:50000, days:0,   color:'#7ad6f0'},
+  brake_fluid:  {name:'Brake Fluid',       mi:0,     days:1095,color:'#ef9a5a'},
+  wiper:        {name:'Wipers',           mi:0,     days:365, color:'#9aa0a8'},
+  wash:         {name:'Car Wash',             mi:0,     days:21,  color:'#5ad0d6'},
+  inspection:   {name:'Inspection/Reg (NJ)',    mi:0,     days:730, color:'#9aa0a8'}
+};
+// Mileage-based part thresholds. Used when no service record exists.
+const MILE_DUE = {
+  spark_plug:  {due:120000, name:'Spark Plugs', note:'6 iridium plugs · every 120k mi'},
+  trans_fluid: {due:120000, every:40000, name:'Transmission Fluid', note:'Toyota says "lifetime" but ~40k mi recommended'},
+  coolant:     {due:100000, every:50000, name:'Coolant', note:'First at 100k mi, then every 50k'},
+  air_filter:  {due:120000, every:20000, name:'Engine Air Filter', note:'Every 20k mi'},
+  brake:       {due:140000, every:35000, name:'Brake Pads', note:'Check wear regularly'},
+  tire_replace:{due:155000, every:45000, name:'Tires', note:'Check tread & date code'}
+};
+let fuel = [], svc = [], trim = 'fwd', logFilter = 'all';
+
+const $ = id => document.getElementById(id);
+const money = n => '$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const money0 = n => '$'+Math.round(n).toLocaleString('en-US');
+const todayStr = () => new Date().toISOString().slice(0,10);
+const daysBetween = (a,b)=> Math.round((new Date(b)-new Date(a))/86400000);
+
+// ---------- storage ----------
+async function load(){
+  try{ const r=await window.storage.get('fuel'); if(r&&r.value) fuel=JSON.parse(r.value);}catch(e){}
+  try{ const r=await window.storage.get('svc');  if(r&&r.value) svc=JSON.parse(r.value);}catch(e){}
+  try{ const r=await window.storage.get('trim'); if(r&&r.value){trim=r.value;$('trim').value=trim;}}catch(e){}
+  render();
+}
+async function persist(){
+  try{ await window.storage.set('fuel',JSON.stringify(fuel)); }catch(e){}
+  try{ await window.storage.set('svc',JSON.stringify(svc)); }catch(e){}
+}
+
+// ---------- compute fuel ----------
+function computedFuel(){
+  const s=[...fuel].sort((a,b)=> a.odo-b.odo || a.date.localeCompare(b.date));
+  return s.map((e,i)=>{
+    const prev=i>0?s[i-1]:null;
+    let mpg=null,miles=null;
+    if(prev){ miles=e.odo-prev.odo; if(miles>0&&e.gal>0) mpg=miles/e.gal; }
+    const cpm=(mpg&&e.ppg)?(e.ppg/mpg)*100:null;
+    const ppgΔ=prev?(e.ppg-prev.ppg):null;
+    return {...e,mpg,miles,cpm,ppgΔ,prevPpg:prev?prev.ppg:null};
+  });
+}
+function epaRef(t){const E=EPA[trim];return t==='city'?E.city:t==='hwy'?E.hwy:E.comb;}
+function deltaColor(p){return p>=-2?'var(--accent)':p>=-12?'var(--warn)':'var(--bad)';}
+function labelType(t){return t==='city'?'City':t==='hwy'?'Hwy':'Mixed';}
+
+// ---------- render ----------
+function render(){
+  const c=computedFuel();
+  renderHero(c); renderStats(c); renderCharts(c); renderDiag(c);
+  renderLog(c); renderReminders(); renderParts(); renderSvcHistory();
+  const maxOdo=Math.max(...[...fuel,...svc].map(e=>e.odo||0),154256);
+  $('odoTop').textContent=maxOdo.toLocaleString('en-US');
+  $('dataCount').textContent=`${fuel.length} fuel · ${svc.length} service`;
+}
+
+function renderHero(c){
+  const w=c.filter(e=>e.mpg!=null); const l=w.length?w[w.length-1]:null;
+  if(l){
+    const ref=epaRef(l.type), pct=((l.mpg-ref)/ref)*100, col=deltaColor(pct);
+    $('heroMpg').textContent=l.mpg.toFixed(1); $('heroMpg').style.color=col;
+    $('heroVs').innerHTML=`EPA ${labelType(l.type)} <b>${ref} MPG</b> → <span class="delta-pill" style="background:${col}22;color:${col}">${pct>=0?'+':''}${pct.toFixed(0)}%</span>`;
+    const max=ref*1.4;
+    $('heroFill').style.width=Math.min(100,(l.mpg/max)*100)+'%'; $('heroFill').style.background=col;
+    const ep=(ref/max)*100; $('epaMark').style.left=ep+'%'; $('epaLab').style.left=ep+'%';
+  }else{ $('heroMpg').textContent='—'; $('heroVs').textContent='Add 2+ fill-ups to calculate real MPG.'; $('heroFill').style.width='0%'; }
+}
+
+function renderStats(c){
+  const w=c.filter(e=>e.mpg!=null); const l=w.length?w[w.length-1]:null;
+  if(l&&l.cpm!=null){ $('costPerMile').innerHTML=l.cpm.toFixed(1)+'<small>¢/mi</small>'; $('costPerMileSub').textContent=`Last ${l.miles} mi · ${money(l.total)}`; }
+  if(w.length){
+    const tm=w.reduce((s,e)=>s+e.miles,0), tg=w.reduce((s,e)=>s+e.gal,0), avg=tm/tg;
+    $('avgMpg').innerHTML=avg.toFixed(1)+'<small>MPG</small>';
+    const ref=EPA[trim].comb, pct=((avg-ref)/ref)*100;
+    $('avgMpgSub').innerHTML=`vs EPA comb <span style="color:${deltaColor(pct)}">${pct>=0?'+':''}${pct.toFixed(0)}%</span>`;
+  }
+  const ts=c.reduce((s,e)=>s+(e.total||0),0); $('totalSpent').textContent=money0(ts); $('totalSpentSub').textContent=`${c.length} fill-ups`;
+  const tv=svc.reduce((s,e)=>s+(e.cost||0),0); $('totalSvc').textContent=money0(tv); $('totalSvcSub').textContent=`${svc.length} services`;
+}
+
+// ---- SVG line chart ----
+function lineChart(svgId, points, opts){
+  const svg=$(svgId); const W=320,H=150,pad={l:6,r:6,t:14,b:18};
+  if(points.length<2){ svg.innerHTML=`<text x="160" y="78" fill="#8a96a5" font-size="11" text-anchor="middle">Need 2+ data points for a chart</text>`; return; }
+  const xs=points.map((p,i)=>i), ys=points.map(p=>p.y);
+  let mn=Math.min(...ys), mx=Math.max(...ys);
+  if(opts.ref!=null){ mn=Math.min(mn,opts.ref); mx=Math.max(mx,opts.ref); }
+  const range=(mx-mn)||1; mn-=range*0.12; mx+=range*0.12;
+  const px=i=>pad.l+(i/(points.length-1))*(W-pad.l-pad.r);
+  const py=v=>pad.t+(1-(v-mn)/(mx-mn))*(H-pad.t-pad.b);
+  let path=points.map((p,i)=>(i?'L':'M')+px(i).toFixed(1)+' '+py(p.y).toFixed(1)).join(' ');
+  let area=path+` L${px(points.length-1).toFixed(1)} ${H-pad.b} L${pad.l} ${H-pad.b} Z`;
+  let refLine='';
+  if(opts.ref!=null){ const ry=py(opts.ref).toFixed(1); refLine=`<line x1="${pad.l}" y1="${ry}" x2="${W-pad.r}" y2="${ry}" stroke="var(--blue)" stroke-width="1" stroke-dasharray="4 3" opacity="0.8"/>`; }
+  let dots=points.map((p,i)=>`<circle cx="${px(i).toFixed(1)}" cy="${py(p.y).toFixed(1)}" r="2.6" fill="${opts.color}"/>`).join('');
+  let labels=points.map((p,i)=>{ if(points.length>6 && i%2!==0 && i!==points.length-1) return ''; return `<text x="${px(i).toFixed(1)}" y="${H-5}" fill="#5a6470" font-size="8" text-anchor="middle">${p.label}</text>`; }).join('');
+  let endLab=`<text x="${px(points.length-1).toFixed(1)}" y="${(py(points[points.length-1].y)-6).toFixed(1)}" fill="${opts.color}" font-size="10" font-weight="700" text-anchor="end">${opts.fmt(points[points.length-1].y)}</text>`;
+  svg.innerHTML=`<defs><linearGradient id="g_${svgId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${opts.color}" stop-opacity="0.25"/><stop offset="1" stop-color="${opts.color}" stop-opacity="0"/></linearGradient></defs>
+    <path d="${area}" fill="url(#g_${svgId})"/>${refLine}<path d="${path}" fill="none" stroke="${opts.color}" stroke-width="2"/>${dots}${labels}${endLab}`;
+}
+
+function renderCharts(c){
+  const w=c.filter(e=>e.mpg!=null);
+  lineChart('mpgChart', w.map(e=>({y:e.mpg,label:fmtD(e.date)})), {color:'#46d6a0',ref:EPA[trim].comb,fmt:v=>v.toFixed(1)});
+  const wp=c.filter(e=>e.ppg>0);
+  lineChart('priceChart', wp.map(e=>({y:e.ppg,label:fmtD(e.date)})), {color:'#f4c84a',ref:null,fmt:v=>'$'+v.toFixed(2)});
+  if(wp.length>=2){ const d=wp[wp.length-1].ppg-wp[0].ppg; $('priceSub').innerHTML=`vs first <span style="color:${d>=0?'var(--bad)':'var(--accent)'}">${d>=0?'+':''}$${d.toFixed(2)}/gal</span>`; }
+}
+function fmtD(d){const t=new Date(d+'T00:00:00');return (t.getMonth()+1)+'/'+t.getDate();}
+
+function renderDiag(c){
+  const el=$('diag'); const w=c.filter(e=>e.mpg!=null);
+  if(!w.length){ el.innerHTML=`<div class="empty" style="padding:8px">Log 2+ fill-ups per type to analyze.</div>`; return; }
+  const types=['city','mixed','hwy'], stat={};
+  types.forEach(t=>{ const g=w.filter(e=>e.type===t); if(g.length){ const mi=g.reduce((s,e)=>s+e.miles,0),ga=g.reduce((s,e)=>s+e.gal,0); stat[t]={mpg:mi/ga}; }});
+  let rows=types.map(t=>{
+    const ref=epaRef(t),s=stat[t];
+    if(!s) return `<div class="ritem"><div class="rname" style="flex:none;width:42px;color:var(--muted)">${labelType(t)}</div><div class="rstat" style="flex:1">No data</div></div>`;
+    const pct=((s.mpg-ref)/ref)*100,col=deltaColor(pct);
+    return `<div class="ritem"><div style="width:42px;font-size:12px;font-weight:700;color:var(--muted)">${labelType(t)}</div>
+      <div style="flex:1;font-size:13px"><b style="color:${col}">${s.mpg.toFixed(1)}</b> <span style="color:var(--muted)">/ EPA ${ref}</span></div>
+      <div style="font-size:13px;font-weight:700;color:${col}">${pct>=0?'+':''}${pct.toFixed(0)}%</div></div>`;
+  }).join('');
+  el.innerHTML=rows;
+}
+
+function renderLog(c){
+  const list=$('logList');
+  let items=[];
+  if(logFilter!=='svc') items=items.concat(c.map(e=>({...e,kind:'fuel'})));
+  if(logFilter!=='fuel') items=items.concat(svc.map(e=>({...e,kind:'svc'})));
+  items.sort((a,b)=> b.date.localeCompare(a.date) || (b.odo||0)-(a.odo||0));
+  if(!items.length){ list.innerHTML=`<div class="empty">No records yet.<br>Add your first with the buttons above.</div>`; return; }
+  list.innerHTML=items.map(e=> e.kind==='fuel'?fuelCard(e):svcCard(e)).join('');
+  list.querySelectorAll('.del').forEach(b=> b.onclick=async()=>{ const k=b.dataset.kind; if(k==='fuel') fuel=fuel.filter(x=>x.id!==b.dataset.id); else svc=svc.filter(x=>x.id!==b.dataset.id); await persist(); render(); });
+}
+
+function fuelCard(e){
+  const ref=epaRef(e.type); let chip='',mpgB,first='';
+  if(e.mpg!=null){ const pct=((e.mpg-ref)/ref)*100,col=deltaColor(pct);
+    chip=`<span class="chip" style="background:${col}22;color:${col}">${pct>=0?'+':''}${pct.toFixed(0)}% vs EPA</span>`;
+    mpgB=`<div class="mv" style="color:${col}">${e.mpg.toFixed(1)}<span style="font-size:11px;color:var(--muted)"> MPG</span></div>`;
+  }else{ mpgB=`<div class="mv" style="color:var(--muted)">—</div>`; first=`<div class="first-note">baseline</div>`; }
+  let pΔ=''; if(e.ppgΔ!=null && Math.abs(e.ppgΔ)>=0.001){ const up=e.ppgΔ>0; pΔ=`<span class="priceΔ" style="color:${up?'var(--bad)':'var(--accent)'}">${up?'▲':'▼'}$${Math.abs(e.ppgΔ).toFixed(2)}</span>`; }
+  const cpm=e.cpm!=null?e.cpm.toFixed(1)+'¢':'—';
+  return `<div class="entry"><div class="top">
+    <div><div class="date">⛽ ${fmtD(e.date)} <span style="font-size:11px;color:var(--muted)">· ${labelType(e.type)}</span></div>
+      <div class="odo">${e.odo.toLocaleString('en-US')} mi ${e.miles!=null?'· +'+e.miles.toLocaleString('en-US')+' mi':''}</div></div>
+    <div style="display:flex;align-items:flex-start"><div class="cost"><div class="total">${money(e.total)}</div>
+      <div class="ppg">${e.gal.toFixed(1)} gal · $${e.ppg.toFixed(2)}/gal ${pΔ}</div></div>
+      <button class="del" data-kind="fuel" data-id="${e.id}">×</button></div></div>
+    <div class="metrics"><div class="m"><div class="ml">Real MPG ${chip}</div>${mpgB}${first}</div>
+      <div class="m"><div class="ml">Cost / Mile</div><div class="mv">${cpm}<span style="font-size:11px;color:var(--muted)">/mi</span></div></div></div>
+    ${e.note?`<div class="note">📝 ${escapeHtml(e.note)}</div>`:''}</div>`;
+}
+function svcCard(e){
+  const r=SVC_RULES[e.type]||{name:'Other',color:'#9aa0a8'};
+  return `<div class="entry svc"><div class="top">
+    <div><div class="date">🔧 ${fmtD(e.date)} <span class="svc-tag">${r.name}</span></div>
+      <div class="odo">${(e.odo||0).toLocaleString('en-US')} mi</div></div>
+    <div style="display:flex;align-items:flex-start"><div class="cost"><div class="total">${e.cost?money(e.cost):'—'}</div></div>
+      <button class="del" data-kind="svc" data-id="${e.id}">×</button></div></div>
+    ${e.note?`<div class="note" style="border:none;padding-top:0">📝 ${escapeHtml(e.note)}</div>`:''}</div>`;
+}
+function escapeHtml(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+// ---- maintenance reminders ----
+function currentOdo(){ return Math.max(...[...fuel,...svc].map(e=>e.odo||0),154256); }
+function renderReminders(){
+  const el=$('reminders'); const odo=currentOdo(); const today=todayStr();
+  const keys=['oil','tire_rotate','wash','inspection','air_filter','brake','tire_replace','battery'];
+  el.innerHTML=keys.map(k=>{
+    const r=SVC_RULES[k];
+    const last=svc.filter(e=>e.type===k).sort((a,b)=>b.date.localeCompare(a.date))[0];
+    let status, color, badge, badgeCol, right;
+    if(!last){
+      status='No record — log your first'; color='#4a5563'; badge='New'; badgeCol='#9aa0a8';
+      right='';
+    }else{
+      const parts=[]; let worst=1; // ratio of usage; >1 overdue
+      if(r.mi>0){ const used=odo-(last.odo||odo); const ratio=used/r.mi; worst=Math.max(worst*0+ratio, worst===1?ratio:Math.max(ratio,worst)); parts.push(`${used.toLocaleString('en-US')}/${r.mi.toLocaleString('en-US')} mi`); }
+      if(r.days>0){ const elapsed=daysBetween(last.date,today); const ratio=elapsed/r.days; worst=Math.max(worst,ratio); parts.push(`${elapsed}/${r.days}d`); }
+      if(worst>=1){ color='#ef5a5a'; badge='Overdue'; badgeCol='#ef5a5a'; }
+      else if(worst>=0.8){ color='#f4a04a'; badge='Soon'; badgeCol='#f4a04a'; }
+      else{ color='#46d6a0'; badge='OK'; badgeCol='#46d6a0'; }
+      status='Last: '+fmtD(last.date)+' @ '+(last.odo||0).toLocaleString('en-US')+'mi';
+      right=parts.join(' · ');
+    }
+    return `<div class="ritem"><div class="dot" style="background:${color}"></div>
+      <div style="flex:1"><div class="rname">${r.name}</div><div class="rstat">${status}</div></div>
+      <div class="rright">${right}<br><span class="rbadge" style="background:${badgeCol}22;color:${badgeCol}">${badge}</span></div></div>`;
+  }).join('');
+}
+function renderParts(){
+  const el=$('parts'); const odo=currentOdo();
+  const keys=Object.keys(MILE_DUE);
+  el.innerHTML=keys.map(k=>{
+    const m=MILE_DUE[k];
+    // last service record for this item
+    const recKey = (k==='tire_replace')?'tire_replace':k;
+    const last=svc.filter(e=>e.type===recKey).sort((a,b)=>(b.odo||0)-(a.odo||0))[0];
+    let nextDue, basis;
+    if(last && last.odo){
+      // last service + interval = next due
+      const interval = m.every || m.due;
+      nextDue = last.odo + interval;
+      basis = `Last ${last.odo.toLocaleString('en-US')}mi`;
+    }else{
+      // no record: use base due; if passed, step by interval
+      if(m.every && odo>m.due){
+        const past=odo-m.due; const n=Math.floor(past/m.every)+1; nextDue=m.due+n*m.every;
+      }else nextDue=m.due;
+      basis='No record';
+    }
+    const remain = nextDue - odo;
+    let color,badge,badgeCol,remainTxt;
+    if(remain<=0){ color='#ef5a5a';badgeCol='#ef5a5a';badge='Replace';
+      remainTxt=`<span style="color:#ef5a5a">${Math.abs(remain).toLocaleString('en-US')}mi over</span>`; }
+    else if(remain<=3000){ color='#f4a04a';badgeCol='#f4a04a';badge='Soon';
+      remainTxt=`${remain.toLocaleString('en-US')}mi left`; }
+    else{ color='#46d6a0';badgeCol='#46d6a0';badge='OK';
+      remainTxt=`${remain.toLocaleString('en-US')}mi left`; }
+    return `<div class="ritem"><div class="dot" style="background:${color}"></div>
+      <div style="flex:1"><div class="rname">${m.name}</div>
+        <div class="rstat">${m.note} · ${basis}</div></div>
+      <div class="rright">Next ${nextDue.toLocaleString('en-US')}mi<br>${remainTxt}<br>
+        <span class="rbadge" style="background:${badgeCol}22;color:${badgeCol}">${badge}</span></div></div>`;
+  }).join('');
+}
+
+function renderSvcHistory(){
+  const el=$('svcHistory');
+  const s=[...svc].sort((a,b)=>b.date.localeCompare(a.date));
+  if(!s.length){ el.innerHTML=`<div class="empty">No service records yet.</div>`; return; }
+  el.innerHTML=s.map(svcCard).join('');
+  el.querySelectorAll('.del').forEach(b=> b.onclick=async()=>{ svc=svc.filter(x=>x.id!==b.dataset.id); await persist(); render(); });
+}
+
+// ---------- forms ----------
+function openForm(id){ closeAllForms(); $(id).classList.add('open'); }
+function closeAllForms(){ $('fuelForm').classList.remove('open'); $('svcForm').classList.remove('open'); }
+$('openFuel').onclick=()=>{ openForm('fuelForm'); if(!$('fDate').value)$('fDate').value=todayStr(); updateCalc(); };
+$('openSvc').onclick=()=>{ openForm('svcForm'); if(!$('sDate').value)$('sDate').value=todayStr(); if(!$('sOdo').value)$('sOdo').value=currentOdo(); };
+document.querySelectorAll('[data-close]').forEach(b=> b.onclick=()=> $(b.dataset.close).classList.remove('open'));
+
+// flexible 2-of-3 calc
+function reconcile(gal,ppg,total){
+  const has=[gal>0,ppg>0,total>0].filter(Boolean).length;
+  if(has<2) return null;
+  if(gal>0&&ppg>0) total=gal*ppg;
+  else if(gal>0&&total>0) ppg=total/gal;
+  else if(ppg>0&&total>0) gal=total/ppg;
+  return {gal,ppg,total};
+}
+function updateCalc(){
+  const g=parseFloat($('fGal').value),p=parseFloat($('fPpg').value),t=parseFloat($('fTotal').value);
+  const r=reconcile(g,p,t);
+  if(!r){ $('calcHint').innerHTML='Enter any <b>two</b> of the three and the rest auto-calculates.'; return; }
+  let msg=`Auto → ${r.gal.toFixed(2)} gal · $${r.ppg.toFixed(2)}/gal · <b>${money(r.total)}</b>`;
+  const c=computedFuel(), odo=parseFloat($('fOdo').value);
+  if(odo>0&&c.length){ const mx=Math.max(...c.map(e=>e.odo)); const mi=odo-mx; if(mi>0) msg+=` · this leg <b>${(mi/r.gal).toFixed(1)} MPG</b>`; }
+  $('calcHint').innerHTML=msg;
+}
+['fGal','fPpg','fTotal','fOdo'].forEach(id=> $(id).addEventListener('input',updateCalc));
+
+$('saveFuel').onclick=async()=>{
+  const date=$('fDate').value, odo=parseFloat($('fOdo').value);
+  const r=reconcile(parseFloat($('fGal').value),parseFloat($('fPpg').value),parseFloat($('fTotal').value));
+  if(!date||!(odo>0)){ alert('Date and odometer are required.'); return; }
+  if(!r){ alert('Enter at least two of: gallons, price, total.'); return; }
+  fuel.push({id:uid(),date,odo,gal:r.gal,ppg:r.ppg,total:r.total,type:$('fType').value,note:$('fNote').value.trim()});
+  await persist();
+  ['fOdo','fGal','fPpg','fTotal','fNote'].forEach(i=>$(i).value=''); $('calcHint').innerHTML='';
+  closeAllForms(); render();
+};
+$('saveSvc').onclick=async()=>{
+  const date=$('sDate').value, odo=parseFloat($('sOdo').value), cost=parseFloat($('sCost').value);
+  if(!date||!(odo>0)){ alert('Date and odometer are required.'); return; }
+  svc.push({id:uid(),date,odo,type:$('sType').value,cost:cost>0?cost:0,note:$('sNote').value.trim()});
+  await persist();
+  ['sOdo','sCost','sNote'].forEach(i=>$(i).value='');
+  closeAllForms(); render();
+};
+function uid(){return Date.now()+''+Math.random().toString(36).slice(2,6);}
+
+// filter + tabs
+document.querySelectorAll('.filter button').forEach(b=> b.onclick=()=>{ document.querySelectorAll('.filter button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); logFilter=b.dataset.filter; render(); });
+// ===== tabs + swipe slider =====
+const TABS = ['dash','log','maint','set'];
+let curTab = 0;
+const slider = $('slider');
+const sliderWrap = $('sliderWrap');
+const tabBtns = Array.from(document.querySelectorAll('.tabs button'));
+
+function goTab(i){
+  curTab = Math.max(0, Math.min(TABS.length-1, i));
+  slider.style.transform = `translateX(-${curTab*25}%)`;
+  tabBtns.forEach((b,idx)=> b.classList.toggle('on', idx===curTab));
+  sliderWrap.scrollIntoView({block:'nearest'});
+}
+tabBtns.forEach((b,idx)=> b.onclick=()=> goTab(idx));
+
+// swipe with axis lock
+let startX=0, startY=0, dragging=false, locked=null, baseTranslate=0;
+const LOCK_THRESHOLD = 10;   // px before deciding direction
+const SWIPE_TRIGGER = 0.22;  // fraction of width to change tab
+
+function onStart(x,y){
+  startX=x; startY=y; dragging=true; locked=null;
+  baseTranslate = -curTab * sliderWrap.offsetWidth;
+}
+function onMove(x,y,e){
+  if(!dragging) return;
+  const dx = x-startX, dy = y-startY;
+  if(locked===null){
+    if(Math.abs(dx)>LOCK_THRESHOLD || Math.abs(dy)>LOCK_THRESHOLD){
+      locked = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+      if(locked==='x') slider.classList.add('dragging');
+    }else return;
+  }
+  if(locked==='y') return;          // let vertical scroll pass through
+  if(locked==='x'){
+    if(e && e.cancelable) e.preventDefault();   // lock horizontal, block vertical scroll
+    let move = baseTranslate + dx;
+    // rubber-band at edges
+    const min = -(TABS.length-1)*sliderWrap.offsetWidth, max=0;
+    if(move>max) move = max + (move-max)*0.35;
+    if(move<min) move = min + (move-min)*0.35;
+    slider.style.transform = `translateX(${move}px)`;
+  }
+}
+function onEnd(x){
+  if(!dragging) return;
+  dragging=false;
+  slider.classList.remove('dragging');
+  if(locked!=='x'){ goTab(curTab); return; }
+  const dx = x-startX;
+  const w = sliderWrap.offsetWidth;
+  if(dx < -w*SWIPE_TRIGGER && curTab < TABS.length-1) goTab(curTab+1);
+  else if(dx > w*SWIPE_TRIGGER && curTab > 0) goTab(curTab-1);
+  else goTab(curTab);   // snap back
+}
+
+// touch
+sliderWrap.addEventListener('touchstart', e=>{ onStart(e.touches[0].clientX, e.touches[0].clientY); }, {passive:true});
+sliderWrap.addEventListener('touchmove', e=>{ onMove(e.touches[0].clientX, e.touches[0].clientY, e); }, {passive:false});
+sliderWrap.addEventListener('touchend', e=>{ onEnd((e.changedTouches[0]||{}).clientX || startX); });
+
+// mouse (for desktop testing)
+let mouseDown=false;
+sliderWrap.addEventListener('mousedown', e=>{ mouseDown=true; onStart(e.clientX,e.clientY); });
+window.addEventListener('mousemove', e=>{ if(mouseDown) onMove(e.clientX,e.clientY,e); });
+window.addEventListener('mouseup', e=>{ if(mouseDown){ mouseDown=false; onEnd(e.clientX); } });
+
+window.addEventListener('resize', ()=> goTab(curTab));
+
+$('trim').onchange=async e=>{ trim=e.target.value; try{await window.storage.set('trim',trim);}catch(x){} render(); };
+
+// backup
+$('exportBtn').onclick=()=>{
+  const data={version:2,exported:new Date().toISOString(),fuel,svc,trim};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='sienna-backup-'+todayStr()+'.json'; a.click();
+};
+$('importBtn').onclick=()=> $('importFile').click();
+$('importFile').onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=async()=>{ try{ const d=JSON.parse(rd.result);
+    if(!confirm('This will overwrite current records with the imported file. Continue?')) return;
+    fuel=d.fuel||[]; svc=d.svc||[]; if(d.trim){trim=d.trim;$('trim').value=trim;}
+    await persist(); render(); alert('Import complete'); }catch(x){ alert('Could not read the file.'); } };
+  rd.readAsText(f);
+};
+$('resetBtn').onclick=async()=>{ if(confirm('Delete all records. Continue?')){ fuel=[];svc=[]; await persist(); render(); } };
+
+load();
+</script>
+</body>
+</html>
